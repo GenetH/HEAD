@@ -25,7 +25,7 @@ class ROIluminance:
 
 
   # other lumene extractor
-  def luminance(self, data2):
+  def luminancewbgr(self, data2):
       b, g, r = cv2.split(data2)
       B = float(np.sum(b)) / np.size(data2)
       G = float(np.sum(g)) / np.size(data2)
@@ -39,11 +39,30 @@ class ROIluminance:
       print(Y, "--")
 
 
+  #hsv
+  def luminancewhsv(self, data2):
+      h, s, v = cv2.split(data2)
+      H = float(np.sum(h)) / np.size(data2)
+      S = float(np.sum(s)) / np.size(data2)
+      V = float(np.sum(v)) / np.size(data2)
+      print( "-----------------", V)
+
+
+      # relative luminance
+      # Y = 0.2126*H + 0.7152*G + 0.0722*B   # photometric /digital ITU BT. 709
+      # print (Y)
+      # perceived luminance
+      # Y = 0.299*R + 0.587*G + 0.114*B
+      # print(Y, "--")
+
+
   # Callback
   def getLightstate(self,data):
     try:
         cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+
+        hsv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2HSV)
 
 
         # will be used to check for side blocks; L and R blocks
@@ -52,7 +71,13 @@ class ROIluminance:
         gray3 = gray[0:h, w/2:w]
 
         decision = "IsDark? "
-        self.luminance(cv_image)
+        self.luminancewbgr(cv_image)
+
+        #HSV checkuhp
+
+        self.luminancewhsv(hsv)
+
+
         self.pub.publish(decision)
 
         cv2.imshow("Room",cv_image)

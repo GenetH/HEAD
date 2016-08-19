@@ -16,77 +16,72 @@ roslib.load_manifest('room_luminance')
 This Class contains the states and behaviours required to get the amount of light in ROI.
  '''
 class ROIluminance:
-
+ #put publishers and subscribers in the ROIluminance constractor
   def __init__(self):
     self.pub = rospy.Publisher('/opencog/room_luminance', String, queue_size=10)
     self.bridge = CvBridge()
-    self.image_sub = rospy.Subscriber("/camera/image_raw",Image,self.getLightstate)
+    self.image_sub = rospy.Subscriber("/camera/image_raw", Image, self.Visibility)
 
 
+  # BGR based: for optionl use
+  def luminance_BGR(self, image_raw_bgr):
+      #split into channels
+      b, g, r = cv2.split(image_raw_bgr)
+      size = np.size(image_raw_bgr)
 
-  # other lumene extractor
-  def luminancewbgr(self, data2):
-      b, g, r = cv2.split(data2)
-      B = float(np.sum(b)) / np.size(data2)
-      G = float(np.sum(g)) / np.size(data2)
-      R = float(np.sum(r)) / np.size(data2)
+      #Get average of Blue, Green and Red pixels
+      B = float(np.sum(b)) / size
+      G = float(np.sum(g)) / size
+      R = float(np.sum(r)) / size
 
-      # relative luminance
-      Y = 0.2126*R + 0.7152*G + 0.0722*B   # photometric /digital ITU BT. 709
-      print (Y)
-      # perceived luminance
-      Y = 0.299*R + 0.587*G + 0.114*B
-      print(Y, "--")
+      # Photometric Luminance
+      Y1 = 0.2126*R + 0.7152*G + 0.0722*B
 
+      # Perceived Luminance
+      Y2 = 0.299*R + 0.587*G + 0.114*B
+      return [Y1, Y2]
 
-  #hsv
-  def luminancewhsv(self, data2):
-      h, s, v = cv2.split(data2)
-      H = float(np.sum(h)) / np.size(data2)
-      S = float(np.sum(s)) / np.size(data2)
-      V = float(np.sum(v)) / np.size(data2)
-      print( "-----------------", V)
+  # HSV based: especially Luminance (V) dependent
+  def luminance_HSV(self, image_raw_hsv):
+      h, s, v = cv2.split(image_raw_hsv)
+      size = np.size(image_raw_hsv)
+      #  optional: for other feature ext
+      # H = float(np.sum(h)) / size #range  0-360
+      # S = float(np.sum(s)) / size #range  0- 100
 
-
-      # relative luminance
-      # Y = 0.2126*H + 0.7152*G + 0.0722*B   # photometric /digital ITU BT. 709
-      # print (Y)
-      # perceived luminance
-      # Y = 0.299*R + 0.587*G + 0.114*B
-      # print(Y, "--")
+      V = float(np.sum(v)) / size #range  0- 100
+      print (V)
+      return float(V)
 
 
-  # Callback
-  def getLightstate(self,data):
+  def Visibility(self, data):
     try:
         cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
-
         hsv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2HSV)
 
+        # print (self.luminance_BGR(cv_image))
 
-        # will be used to check for side blocks; L and R blocks
-        h, w = cv_image.shape[:2]
-        gray2 = gray[0:h,0:w/2]
-        gray3 = gray[0:h, w/2:w]
-
-        decision = "IsDark? "
-        self.luminancewbgr(cv_image)
-
-        #HSV checkuhp
-
-        self.luminancewhsv(hsv)
+        lumene = self.luminance_HSV(hsv)
 
 
-        self.pub.publish(decision)
+
+        self.pub.publish(self.classify(lumene))
+
 
         cv2.imshow("Room",cv_image)
-
         if cv2.waitKey(1) & 0xFF == ord('q'):
             exit(0)
     except CvBridgeError as e:
       print(e)
 
+
+  def classify(self, lumene):
+      if lumene <=25:
+          return "Dark"
+      elif lumene <= 55:
+          return "Nominal"
+      else:
+          return "Bright"
 def main(args):
     rospy.init_node('perceived_luminance', anonymous=True)
     ROIluminance()

@@ -22,7 +22,7 @@ class ROIluminance:
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("/camera/image_raw", Image, self.Visibility)
 
-
+  '''
   # BGR based: for optionl use
   def luminance_BGR(self, image_raw_bgr):
       #split into channels
@@ -40,7 +40,7 @@ class ROIluminance:
       # Perceived Luminance
       Y2 = 0.299*R + 0.587*G + 0.114*B
       return [Y1, Y2]
-
+  '''
   # HSV based: especially Luminance (V) dependent
   def luminance_HSV(self, image_raw_hsv):
       h, s, v = cv2.split(image_raw_hsv)
@@ -50,8 +50,27 @@ class ROIluminance:
       # S = float(np.sum(s)) / size #range  0- 100
 
       V = float(np.sum(v)) / size #range  0- 100
-      print (V)
+      # print (V)
       return float(V)
+
+
+  def classify(self, lumene):
+    if lumene <= 25:
+        return "Dark"
+    elif lumene <= 55:
+        return "Nominal"
+    else:
+        return "Bright"
+
+  def HandbBock(self, image_raw):
+    gray = cv2.cvtColor(image_raw, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (5,5), 0)
+    edged = cv2.Canny(gray, 35, 125)
+
+    (cnts, _) =cv2.findContours(edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    c =max(cnts, key = cv2.contourArea)
+    print (c)
+    cv2.imshow("Aread", edged)
 
 
   def Visibility(self, data):
@@ -62,26 +81,23 @@ class ROIluminance:
         # print (self.luminance_BGR(cv_image))
 
         lumene = self.luminance_HSV(hsv)
+        self.HandbBock(cv_image)
 
 
 
         self.pub.publish(self.classify(lumene))
 
 
-        cv2.imshow("Room",cv_image)
+        # cv2.imshow("Room",cv_image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             exit(0)
     except CvBridgeError as e:
       print(e)
 
 
-  def classify(self, lumene):
-      if lumene <=25:
-          return "Dark"
-      elif lumene <= 55:
-          return "Nominal"
-      else:
-          return "Bright"
+
+
+
 def main(args):
     rospy.init_node('perceived_luminance', anonymous=True)
     ROIluminance()

@@ -4,4 +4,6 @@
         <arg name="model" value="$(find perception)/description.urdf" />
     </include>
     <include file="$(find ros_nmpt_saliency)/launch/saliency.launch"/>
+    <include file="$(find room_luminance)/launch/room_luminance.launch"/>
+
 </launch>

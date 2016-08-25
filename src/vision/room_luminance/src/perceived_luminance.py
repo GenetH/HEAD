@@ -87,6 +87,7 @@ class ROIluminance:
         return "Dark"
     elif lumene <= 55:
         if self.covUp <= coverage <=self.covDown:
+
             return "Dark"
         else:
             return "Nominal"
@@ -122,7 +123,7 @@ class ROIluminance:
         msg.brightness = self.classify(lumene, coverage)
         msg.coverage = coverage
         self.pub.publish(msg)
-        cv2.imshow("Room", cv_image)
+        # cv2.imshow("Room", cv_image)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             exit(0)
 

@@ -12,13 +12,16 @@ Moreover, the repository will have the following features by the end of developm
 
 ## Install, Build and Run w/ HEAD
 * Refer [HEAD] (https://github.com/hansonrobotics/HEAD#install-build-and-run)
+
 ## Run Room Luminance Only
-* navigate to your workspace
-* `roslaunch roomluminance room_luminance.launch`
+* Navigate to your workspace
+* `roslaunch room_luminance room_luminance.launch`
 
 ## Topics and Published Messages Type
+
 ### Topics
 * `/opencog/room_luminance`
+
 ### Custom Messages
 * Message File: `Luminance.msg`
   * `string brightness`: string that holds the luminance(DARK, NOMINAl, and BRIGHT) of a given ROI. 

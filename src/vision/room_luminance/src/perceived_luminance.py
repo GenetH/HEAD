@@ -1,39 +1,46 @@
 #!/usr/bin/env python
-from __future__ import print_function
-from std_msgs.msg import String
 from sensor_msgs.msg import Image
 
+from pi_face_tracker.msg import FaceEvent,Faces
 from room_luminance.msg import Luminance
 from cv_bridge import CvBridge, CvBridgeError
 import roslib
-import sys
 import rospy
 import cv2
+import sys
 import  numpy as np
 import math
+import time
+
 
 roslib.load_manifest('room_luminance')
 
 '''
-This Class contains the states and behaviours required to get the amount of light in the captured frame.
+This Class contains the states and behaviours required to get the amount of light in the captured frame and detects object blocks above N% of coverage.
  '''
+
 class ROIluminance:
 
- # initialize publishers, subscribers and static members in the class constructor
+ # initialize publishers, subscribers and static members inside class constructor.
   def __init__(self):
     self.pub = rospy.Publisher('/opencog/room_luminance', Luminance, queue_size=10)
     self.bridge = CvBridge()
     self.image_sub = rospy.Subscriber("/camera/image_raw", Image, self.Visibility)
-    self.count = 10
-    self.ref = " "
+    self.face_event = rospy.Subscriber("/camera/face_locations", Faces, self.count_faces) # event = new_face: informs released/uncovered screen
+
+    self.count = 25
+    self.ref = ""
     self.RefArea = 0
-    self.tolerableCnts = 6
     self.totalArea = 0
-    self.covUp = 75
+    self.covUp = 65
     self.covDown = 95
+    self.face = 0
 
-  ''' BGR based: could be used for further requirements. i.e hsv would be more than enough for the current req.'''
 
+
+  '''
+  BGR based: could be used for further requirements. i.e hsv would be more than enough for the current req.
+  '''
   # def luminance_BGR(self, image_raw_bgr):
   #     #split into channels
   #     b, g, r = cv2.split(image_raw_bgr)
@@ -51,7 +58,6 @@ class ROIluminance:
   #     Y2 = 0.299*R + 0.587*G + 0.114*B
   #     return [Y1, Y2]
 
-
   ''' HSV based Room Luminance Detection '''
   def luminance_HSV(self, image_raw_hsv):
       h, s, v = cv2.split(image_raw_hsv)
@@ -65,7 +71,7 @@ class ROIluminance:
       return float(V)
 
 
-  def objectBlock(self, image_raw):
+  def objectBlock(self, image_raw, a):
     h, w = image_raw.shape
     self.totalArea = float(h * w)
 
@@ -74,56 +80,67 @@ class ROIluminance:
 
     (cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    TArea = 0
     for c in cnts:
-        # Discard tiny objects/contours that usually does not have relevant if it is created by close enough object
+        # Discard tiny objects/contours that usually does not have relevance if it is created by close enough/blocking objects
         if cv2.contourArea(c) <= 100:
             pass
         self.RefArea = self.RefArea + cv2.contourArea(c)
     return math.ceil(((self.RefArea / self.totalArea) * 100))
 
-  def classify(self, lumene, coverage):
+
+  def classify(self, lumene):
     if lumene <= 25:
         return "Dark"
-    elif lumene <= 55:
-        if self.covUp <= coverage <=self.covDown:
-
-            return "Dark"
-        else:
-            return "Nominal"
+    elif lumene <= 40:
+        return "Nominal"
     else:
         return "Bright"
 
+  # callback
+  def count_faces(self, face_state):
+    self.face = len(face_state.faces)
+      # self.Face_Event = face_state.face_event
 
+
+  #callback
   def Visibility(self, data):
-
     try:
         cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         hsv = cv2.cvtColor(cv_image,cv2.COLOR_BGR2HSV)
 
         gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
 
-        h, s, v = cv2.split(hsv)
-
-
-        if self.count % 10 == 0:
+        if self.count % 25 == 0:
             self.ref = gray
             self.count = 1
         self.count += 1
         diff = cv2.absdiff(self.ref, gray)
 
-        #get the average light on HSV image
+        # get the luminance of HSV frame
         lumene = self.luminance_HSV(hsv)
+
         # get the percent of coverage by an object
-        coverage = self.objectBlock(diff)
+        coverage = self.objectBlock(diff, self.ref)
+
+        # msg.covered = iscovered(coverage)
+
+
+
+
+
 
         self.RefArea = 0
-
         msg = Luminance()
-        msg.brightness = self.classify(lumene, coverage)
-        msg.coverage = coverage
+
+
+        msg.covered = 0
+        msg.perc_covered = coverage
+
+        msg.value = lumene
+        msg.room_light = self.classify(lumene)
+
         self.pub.publish(msg)
-        # cv2.imshow("Room", cv_image)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             exit(0)
 

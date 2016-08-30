@@ -1,5 +1,7 @@
-float32 value
-float32 covered
-float32 perc_covered
+int8 covered
+int8 sudden_change
 string room_light
+float32 value
+float32 perc_covered
+
 

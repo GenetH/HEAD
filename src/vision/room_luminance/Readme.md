@@ -24,6 +24,9 @@ Moreover, the repository will have the following features by the end of developm
 
 ### Custom Messages
 * Message File: `Luminance.msg`
-  * `string brightness`: string that holds the luminance(DARK, NOMINAl, and BRIGHT) of a given ROI. 
-  * `float32 coverage`: This is the percent of screen covered by close enough objects. Very  close objects by themselves may cover the camera and affect it to have very small luminance. On the contrary, the robot camera could be covered without affecting the amount of light applied on the camera. In this scenario, the robot must know that it is covered by some object/hand.
+  * `int8 covered`: checks whether the ROI is covered or not.
+  * `int8 sudden_change`: used to publish 1, 0, and 1 for Dark-->Bright, Stable, and Bright-->Dark changes respectively.
+  * `string room_light`: string that holds the luminance(Dark, Nominal, and Bright) of a given ROI. 
+  * `float32 value`: the amount of light in a frame irresective of the aforementioned states. Range is 1-100.
+  * `float32 perc_covered`: This is the percent of screen covered by close enough objects. Very  close objects by themselves may cover the camera and affect it to have very small luminance. On the contrary, the robot camera could be covered without affecting the amount of light applied on the camera. In this scenario, the robot must know that it is covered by some object/hand.
 
